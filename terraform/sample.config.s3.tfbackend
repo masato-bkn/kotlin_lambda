@@ -1,0 +1,3 @@
+bucket = "bucket-name"
+key    = "path/to/key"
+region = "ap-northeast-1"
