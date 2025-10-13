@@ -1,7 +1,9 @@
 package com.example.service
 
 class GreetingService {
-    fun generateGreeting(): String {
-        return "Hello World from Kotlin Lambda!"
+    companion object {
+        fun generateGreeting(): String {
+            return "Hello World from Kotlin Lambda!"
+        }
     }
 }
