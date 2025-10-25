@@ -2,18 +2,55 @@ package com.example
 
 import com.amazonaws.services.lambda.runtime.Context
 import com.amazonaws.services.lambda.runtime.RequestHandler
-import com.example.service.GreetingService
+import com.example.model.SlackEvent
+import com.example.model.ChallengeResponse
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
 
 class Handler : RequestHandler<Map<String, Any>, Map<String, Any>> {
+    private val json = Json { ignoreUnknownKeys = true }
+
     override fun handleRequest(input: Map<String, Any>, context: Context): Map<String, Any> {
         val logger = context.logger
         logger.log("Received request: $input")
 
-        val greeting = GreetingService.generateGreeting()
+        return try {
+            // リクエストボディを取得
+            val body = input["body"] as? String
+                ?: return errorResponse("Missing request body", 400)
 
-        return mapOf(
-            "statusCode" to 200,
-            "body" to greeting
-        )
+            // JSONをパース
+            val slackEvent = json.decodeFromString<SlackEvent>(body)
+            logger.log("Parsed Slack event: type=${slackEvent.type}")
+
+            // url_verification イベントの処理
+            when (slackEvent.type) {
+                "url_verification" -> {
+                    val challenge = slackEvent.challenge
+                        ?: return errorResponse("Missing challenge parameter", 400)
+
+                    val response = ChallengeResponse(challenge)
+                    successResponse(json.encodeToString(response))
+                }
+                else -> {
+                    errorResponse("Unsupported event type: ${slackEvent.type}", 400)
+                }
+            }
+        } catch (e: Exception) {
+            logger.log("Error processing request: ${e.message}")
+            errorResponse("Invalid request: ${e.message}", 400)
+        }
     }
+
+    private fun successResponse(body: String): Map<String, Any> = mapOf(
+        "statusCode" to 200,
+        "headers" to mapOf("Content-Type" to "application/json"),
+        "body" to body
+    )
+
+    private fun errorResponse(message: String, statusCode: Int): Map<String, Any> = mapOf(
+        "statusCode" to statusCode,
+        "headers" to mapOf("Content-Type" to "application/json"),
+        "body" to """{"error": "$message"}"""
+    )
 }
