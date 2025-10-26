@@ -6,8 +6,8 @@ import kotlinx.serialization.Serializable
 data class SlackEvent(
     val type: String,
     val challenge: String? = null,
-    val token: String,
-    val event: MessageEvent,
+    val token: String? = null,
+    val event: MessageEvent? = null,
 )
 
 @Serializable
@@ -17,6 +17,11 @@ data class MessageEvent(
     val user: String,
     val text: String,
     val ts: String,
+)
+
+@Serializable
+data class ChallengeResponse(
+    val challenge: String,
 )
 
 @Serializable

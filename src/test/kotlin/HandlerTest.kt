@@ -23,6 +23,27 @@ class HandlerTest {
     }
 
     @Test
+    fun `should handle url_verification event successfully`() {
+        val challengeValue = "test_challenge_value_123"
+
+        val slackEvent = SlackEvent(
+            type = "url_verification",
+            challenge = challengeValue,
+            token = "test_token"
+        )
+        val input = mapOf(
+            "body" to Json.encodeToString(slackEvent)
+        )
+
+        val response = handler.handleRequest(input, mockContext)
+        assertEquals(200, response["statusCode"])
+
+        val responseBody = response["body"] as String
+        val json = Json.parseToJsonElement(responseBody).jsonObject
+        assertEquals(challengeValue, json["challenge"]?.jsonPrimitive?.content)
+    }
+
+    @Test
     fun `should handle event_callback event successfully`() {
         val messageText = "Hello from Slack!"
 
