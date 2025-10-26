@@ -3,7 +3,7 @@ package com.example
 import com.amazonaws.services.lambda.runtime.Context
 import com.amazonaws.services.lambda.runtime.RequestHandler
 import com.example.model.SlackEvent
-import com.example.model.ChallengeResponse
+import com.example.model.Response
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 
@@ -25,12 +25,10 @@ class Handler : RequestHandler<Map<String, Any>, Map<String, Any>> {
 
             // url_verification イベントの処理
             when (slackEvent.type) {
-                "url_verification" -> {
-                    val challenge = slackEvent.challenge
-                        ?: return errorResponse("Missing challenge parameter", 400)
-
-                    val response = ChallengeResponse(challenge)
+                "event_callback" -> {
+                    val response = Response(slackEvent.event.text)
                     successResponse(json.encodeToString(response))
+
                 }
                 else -> {
                     errorResponse("Unsupported event type: ${slackEvent.type}", 400)

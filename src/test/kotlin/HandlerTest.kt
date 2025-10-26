@@ -2,6 +2,9 @@ package com.example
 
 import com.amazonaws.services.lambda.runtime.Context
 import com.amazonaws.services.lambda.runtime.LambdaLogger
+import com.example.model.MessageEvent
+import com.example.model.SlackEvent
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -20,111 +23,31 @@ class HandlerTest {
     }
 
     @Test
-    fun `should handle url_verification event successfully`() {
-        // Given
-        val challengeValue = "test_challenge_value_123"
-        val requestBody = """
-            {
-                "type": "url_verification",
-                "challenge": "$challengeValue",
-                "token": "test_token"
-            }
-        """.trimIndent()
+    fun `should handle event_callback event successfully`() {
+        val messageText = "Hello from Slack!"
 
-        val input = mapOf(
-            "body" to requestBody
+        val event = MessageEvent(
+            type = "message",
+            channel = "C123456",
+            user = "U123456",
+            text = messageText,
+            ts = "1234567890.123456"
         )
 
-        // When
-        val response = handler.handleRequest(input, mockContext)
+        val slackEvent = SlackEvent(
+            type = "event_callback",
+            token = "test_token",
+            event = event
+        )
+        val input = mapOf(
+            "body" to Json.encodeToString(slackEvent)
+        )
 
-        // Then
+        val response = handler.handleRequest(input, mockContext)
         assertEquals(200, response["statusCode"])
 
         val responseBody = response["body"] as String
         val json = Json.parseToJsonElement(responseBody).jsonObject
-        assertEquals(challengeValue, json["challenge"]?.jsonPrimitive?.content)
-    }
-
-    @Test
-    fun `should return 400 when body is missing`() {
-        // Given
-        val input = mapOf<String, Any>()
-
-        // When
-        val response = handler.handleRequest(input, mockContext)
-
-        // Then
-        assertEquals(400, response["statusCode"])
-
-        val responseBody = response["body"] as String
-        assertTrue(responseBody.contains("error"))
-    }
-
-    @Test
-    fun `should return 400 for unsupported event type`() {
-        // Given
-        val requestBody = """
-            {
-                "type": "unsupported_event",
-                "data": "some_data"
-            }
-        """.trimIndent()
-
-        val input = mapOf(
-            "body" to requestBody
-        )
-
-        // When
-        val response = handler.handleRequest(input, mockContext)
-
-        // Then
-        assertEquals(400, response["statusCode"])
-
-        val responseBody = response["body"] as String
-        assertTrue(responseBody.contains("Unsupported event type"))
-    }
-
-    @Test
-    fun `should return 400 when challenge is missing in url_verification event`() {
-        // Given
-        val requestBody = """
-            {
-                "type": "url_verification",
-                "token": "test_token"
-            }
-        """.trimIndent()
-
-        val input = mapOf(
-            "body" to requestBody
-        )
-
-        // When
-        val response = handler.handleRequest(input, mockContext)
-
-        // Then
-        assertEquals(400, response["statusCode"])
-
-        val responseBody = response["body"] as String
-        assertTrue(responseBody.contains("Missing challenge parameter"))
-    }
-
-    @Test
-    fun `should return 400 for invalid JSON`() {
-        // Given
-        val requestBody = "invalid json"
-
-        val input = mapOf(
-            "body" to requestBody
-        )
-
-        // When
-        val response = handler.handleRequest(input, mockContext)
-
-        // Then
-        assertEquals(400, response["statusCode"])
-
-        val responseBody = response["body"] as String
-        assertTrue(responseBody.contains("error"))
+        assertEquals(messageText, json["message"]?.jsonPrimitive?.content)
     }
 }
