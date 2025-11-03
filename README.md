@@ -37,26 +37,6 @@ A Kotlin-based AWS Lambda function that handles Slack events, deployed automatic
 ./gradlew shadowJar
 ```
 
-### Terraform State Migration (First Time Setup)
-
-If you already have local Terraform state, migrate it to S3:
-
-```bash
-cd terraform
-
-# Step 1: Apply without backend to create S3 bucket and DynamoDB table
-# Comment out the backend "s3" block in main.tf temporarily
-terraform init
-terraform apply
-
-# Step 2: Uncomment the backend "s3" block in main.tf
-
-# Step 3: Reinitialize and migrate state to S3
-terraform init -migrate-state
-
-# Answer 'yes' when prompted to migrate state
-```
-
 ### Manual Deployment
 
 ```bash
