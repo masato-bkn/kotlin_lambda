@@ -5,11 +5,23 @@ import com.amazonaws.services.lambda.runtime.RequestHandler
 import com.example.model.SlackEvent
 import com.example.model.ChallengeResponse
 import com.example.model.Response
+import com.example.service.NotionService
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 
 class Handler : RequestHandler<Map<String, Any>, Map<String, Any>> {
     private val json = Json { ignoreUnknownKeys = true }
+
+    private val notionService: NotionService? by lazy {
+        val apiKey = System.getenv("NOTION_API_KEY")
+        val pageId = System.getenv("NOTION_PAGE_ID")
+
+        if (apiKey != null && pageId != null) {
+            NotionService(apiKey, pageId)
+        } else {
+            null
+        }
+    }
 
     override fun handleRequest(input: Map<String, Any>, context: Context): Map<String, Any> {
         val logger = context.logger
@@ -38,6 +50,20 @@ class Handler : RequestHandler<Map<String, Any>, Map<String, Any>> {
                         ?: return errorResponse("Missing event", 400)
 
                     logger.log("受信メッセージ: ${event.text}")
+
+                    // Notionにテキストを投稿
+                    try {
+                        if (notionService != null) {
+                            notionService.appendTextToPage(event.text)
+                            logger.log("Notionへの投稿に成功: ${event.text}")
+                        } else {
+                            logger.log("警告: NOTION_API_KEYまたはNOTION_PAGE_IDが設定されていません")
+                        }
+                    } catch (e: Exception) {
+                        logger.log("Notionへの投稿エラー: ${e.message}")
+                        // エラーが発生してもSlackへのレスポンスは返す
+                    }
+
                     val response = Response(event.text)
                     successResponse(json.encodeToString(response))
                 }
