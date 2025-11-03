@@ -16,6 +16,7 @@ dependencies {
     implementation("com.amazonaws:aws-lambda-java-events:3.11.4")
     implementation(kotlin("stdlib"))
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
+    implementation("org.jraf:klibnotion:1.12.0")
 
     testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.1")
