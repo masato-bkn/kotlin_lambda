@@ -5,24 +5,43 @@ import com.amazonaws.services.lambda.runtime.RequestHandler
 import com.example.model.SlackEvent
 import com.example.model.ChallengeResponse
 import com.example.model.Response
+import com.example.service.NotionService
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 
 class Handler : RequestHandler<Map<String, Any>, Map<String, Any>> {
     private val json = Json { ignoreUnknownKeys = true }
+    private val notionService: NotionService? by lazy {
+        val apiKey = System.getenv("NOTION_API_KEY")
+        val pageId = System.getenv("NOTION_PAGE_ID")
+        if (apiKey != null && pageId != null) {
+            NotionService(apiKey, pageId)
+        } else {
+            null
+        }
+    }
 
     override fun handleRequest(input: Map<String, Any>, context: Context): Map<String, Any> {
         val logger = context.logger
         logger.log("Received request: $input")
 
         return try {
+            // Slackのリトライをスキップ
+            val headers = input["headers"] as? Map<*, *>
+            logger.log("headers: $headers")
+            val retryNum = headers?.get("X-Slack-Retry-Num") ?: headers?.get("x-slack-retry-num")
+            if (retryNum != null) {
+                logger.log("Slackのリトライをスキップ: retry-num=$retryNum")
+                return successResponse("{}")
+            }
+
             // リクエストボディを取得
             val body = input["body"] as? String
                 ?: return errorResponse("Missing request body", 400)
 
             // JSONをパース
             val slackEvent = json.decodeFromString<SlackEvent>(body)
-            logger.log("Parsed Slack event: type=${slackEvent.type}")
+            logger.log("Parsed Slack event: type=${slackEvent.type}, event_id=${slackEvent.event_id}")
 
             // イベントタイプごとの処理
             when (slackEvent.type) {
@@ -38,6 +57,19 @@ class Handler : RequestHandler<Map<String, Any>, Map<String, Any>> {
                         ?: return errorResponse("Missing event", 400)
 
                     logger.log("受信メッセージ: ${event.text}")
+
+                    // Notionにメッセージを追記
+                    try {
+                        logger.log("notionService: $notionService")
+                        notionService?.appendMessage(event.text, event.user, event.ts) { message ->
+                            logger.log(message)
+                        }
+                        logger.log("Notionにメッセージを追記しました")
+                    } catch (e: Exception) {
+                        logger.log("Notion追記エラー: ${e.message}")
+                        e.printStackTrace()
+                    }
+
                     val response = Response(event.text)
                     successResponse(json.encodeToString(response))
                 }

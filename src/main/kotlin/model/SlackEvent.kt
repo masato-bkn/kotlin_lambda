@@ -8,6 +8,7 @@ data class SlackEvent(
     val challenge: String? = null,
     val token: String? = null,
     val event: MessageEvent? = null,
+    val event_id: String? = null,
 )
 
 @Serializable

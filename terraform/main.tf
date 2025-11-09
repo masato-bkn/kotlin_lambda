@@ -48,11 +48,11 @@ resource "aws_lambda_function" "kotlin_lambda" {
   memory_size     = 512
   timeout         = 30
 
-  environment {
-    variables = {
-      ENV = "production"
+  lifecycle {
+      ignore_changes = [
+        environment,
+      ]
     }
-  }
 }
 
 # CloudWatch Log Group
