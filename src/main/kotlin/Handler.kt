@@ -9,15 +9,20 @@ import com.example.service.NotionService
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 
-class Handler : RequestHandler<Map<String, Any>, Map<String, Any>> {
+class Handler(
+    private val notionService: NotionService? = createNotionService()
+) : RequestHandler<Map<String, Any>, Map<String, Any>> {
     private val json = Json { ignoreUnknownKeys = true }
-    private val notionService: NotionService? by lazy {
-        val apiKey = System.getenv("NOTION_API_KEY")
-        val pageId = System.getenv("NOTION_PAGE_ID")
-        if (apiKey != null && pageId != null) {
-            NotionService(apiKey, pageId)
-        } else {
-            null
+
+    companion object {
+        private fun createNotionService(): NotionService? {
+            val apiKey = System.getenv("NOTION_API_KEY")
+            val pageId = System.getenv("NOTION_PAGE_ID")
+            return if (apiKey != null && pageId != null) {
+                NotionService(apiKey, pageId)
+            } else {
+                null
+            }
         }
     }
 

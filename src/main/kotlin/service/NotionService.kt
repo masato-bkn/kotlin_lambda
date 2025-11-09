@@ -13,9 +13,10 @@ import java.time.format.DateTimeFormatter
 
 class NotionService(
     private val apiKey: String,
-    private val pageId: String
+    private val pageId: String,
+    private val baseUrl: String = "https://api.notion.com",
+    private val client: OkHttpClient = OkHttpClient()
 ) {
-    private val client = OkHttpClient()
     private val json = Json { ignoreUnknownKeys = true }
     private val mediaType = "application/json; charset=utf-8".toMediaType()
 
@@ -44,7 +45,7 @@ class NotionService(
         logger?.invoke("Notion Page ID: $pageId")
 
         val request = Request.Builder()
-            .url("https://api.notion.com/v1/blocks/$pageId/children")
+            .url("$baseUrl/v1/blocks/$pageId/children")
             .addHeader("Authorization", "Bearer $apiKey")
             .addHeader("Content-Type", "application/json")
             .addHeader("Notion-Version", "2022-06-28")
