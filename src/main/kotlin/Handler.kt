@@ -2,9 +2,7 @@ package com.example
 
 import com.amazonaws.services.lambda.runtime.Context
 import com.amazonaws.services.lambda.runtime.RequestHandler
-import com.example.model.SlackEvent
-import com.example.model.ChallengeResponse
-import com.example.model.Response
+import com.example.model.*
 import com.example.service.NotionService
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
@@ -12,7 +10,10 @@ import kotlinx.serialization.encodeToString
 class Handler(
     private val notionService: NotionService? = createNotionService()
 ) : RequestHandler<Map<String, Any>, Map<String, Any>> {
-    private val json = Json { ignoreUnknownKeys = true }
+    private val json = Json {
+        ignoreUnknownKeys = true
+        classDiscriminator = "#type"
+    }
 
     companion object {
         private fun createNotionService(): NotionService? {
@@ -46,21 +47,17 @@ class Handler(
 
             // JSONをパース
             val slackEvent = json.decodeFromString<SlackEvent>(body)
-            logger.log("Parsed Slack event: type=${slackEvent.type}, event_id=${slackEvent.event_id}")
 
-            // イベントタイプごとの処理
-            when (slackEvent.type) {
-                "url_verification" -> {
-                    val challenge = slackEvent.challenge
-                        ?: return errorResponse("Missing challenge parameter", 400)
-
-                    val response = ChallengeResponse(challenge)
+            // イベントタイプごとの処理（sealed classでスマートキャスト）
+            when (slackEvent) {
+                is UrlVerificationEvent -> {
+                    logger.log("Parsed Slack event: type=${slackEvent.type}, challenge=${slackEvent.challenge}")
+                    val response = ChallengeResponse(slackEvent.challenge)
                     successResponse(json.encodeToString(response))
                 }
-                "event_callback" -> {
+                is EventCallbackEvent -> {
+                    logger.log("Parsed Slack event: type=${slackEvent.type}, event_id=${slackEvent.eventId}")
                     val event = slackEvent.event
-                        ?: return errorResponse("Missing event", 400)
-
                     logger.log("受信メッセージ: ${event.text}")
 
                     // Notionにメッセージを追記
@@ -77,9 +74,6 @@ class Handler(
 
                     val response = Response(event.text)
                     successResponse(json.encodeToString(response))
-                }
-                else -> {
-                    errorResponse("Unsupported event type: ${slackEvent.type}", 400)
                 }
             }
         } catch (e: Exception) {

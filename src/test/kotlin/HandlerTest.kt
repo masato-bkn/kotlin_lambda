@@ -2,8 +2,7 @@ package com.example
 
 import com.amazonaws.services.lambda.runtime.Context
 import com.amazonaws.services.lambda.runtime.LambdaLogger
-import com.example.model.MessageEvent
-import com.example.model.SlackEvent
+import com.example.model.*
 import com.example.service.NotionService
 import io.mockk.*
 import kotlinx.serialization.encodeToString
@@ -16,6 +15,10 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 
 class HandlerTest {
+    private val json = Json {
+        ignoreUnknownKeys = true
+        classDiscriminator = "#type"
+    }
     private val handler = Handler()
     private val mockContext: Context = mock()
     private val mockLogger: LambdaLogger = mock()
@@ -28,13 +31,12 @@ class HandlerTest {
     fun `should handle url_verification event successfully`() {
         val challengeValue = "test_challenge_value_123"
 
-        val slackEvent = SlackEvent(
-            type = "url_verification",
+        val slackEvent = UrlVerificationEvent(
             challenge = challengeValue,
             token = "test_token"
         )
         val input = mapOf(
-            "body" to Json.encodeToString(slackEvent)
+            "body" to json.encodeToString<SlackEvent>(slackEvent)
         )
 
         val response = handler.handleRequest(input, mockContext)
@@ -57,13 +59,12 @@ class HandlerTest {
             ts = "1234567890.123456"
         )
 
-        val slackEvent = SlackEvent(
-            type = "event_callback",
+        val slackEvent = EventCallbackEvent(
             token = "test_token",
             event = event
         )
         val input = mapOf(
-            "body" to Json.encodeToString(slackEvent)
+            "body" to json.encodeToString<SlackEvent>(slackEvent)
         )
 
         val response = handler.handleRequest(input, mockContext)
@@ -76,8 +77,7 @@ class HandlerTest {
 
     @Test
     fun `should skip Slack retry requests with X-Slack-Retry-Num header`() {
-        val slackEvent = SlackEvent(
-            type = "event_callback",
+        val slackEvent = EventCallbackEvent(
             token = "test_token",
             event = MessageEvent(
                 type = "message",
@@ -89,7 +89,7 @@ class HandlerTest {
         )
         val input = mapOf(
             "headers" to mapOf("X-Slack-Retry-Num" to "1"),
-            "body" to Json.encodeToString(slackEvent)
+            "body" to json.encodeToString<SlackEvent>(slackEvent)
         )
 
         val response = handler.handleRequest(input, mockContext)
@@ -101,8 +101,7 @@ class HandlerTest {
 
     @Test
     fun `should skip Slack retry requests with lowercase x-slack-retry-num header`() {
-        val slackEvent = SlackEvent(
-            type = "event_callback",
+        val slackEvent = EventCallbackEvent(
             token = "test_token",
             event = MessageEvent(
                 type = "message",
@@ -114,7 +113,7 @@ class HandlerTest {
         )
         val input = mapOf(
             "headers" to mapOf("x-slack-retry-num" to "2"),
-            "body" to Json.encodeToString(slackEvent)
+            "body" to json.encodeToString<SlackEvent>(slackEvent)
         )
 
         val response = handler.handleRequest(input, mockContext)
@@ -142,13 +141,12 @@ class HandlerTest {
             ts = "1234567890.123456"
         )
 
-        val slackEvent = SlackEvent(
-            type = "event_callback",
+        val slackEvent = EventCallbackEvent(
             token = "test_token",
             event = event
         )
         val input = mapOf(
-            "body" to Json.encodeToString(slackEvent)
+            "body" to json.encodeToString<SlackEvent>(slackEvent)
         )
 
         val response = handlerWithNotion.handleRequest(input, mockContext)
