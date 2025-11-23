@@ -7,6 +7,15 @@ terraform {
       version = "~> 5.0"
     }
   }
+
+  # S3 backend for state management
+  backend "s3" {
+    bucket         = "kotlin-lambda-terraform-state"
+    key            = "terraform.tfstate"
+    region         = "ap-northeast-1"
+    encrypt        = true
+    dynamodb_table = "kotlin-lambda-terraform-locks"
+  }
 }
 
 provider "aws" {
