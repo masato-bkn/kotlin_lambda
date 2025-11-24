@@ -1,14 +1,15 @@
 package com.example
 
+import arrow.core.Either
 import com.amazonaws.services.lambda.runtime.Context
 import com.amazonaws.services.lambda.runtime.RequestHandler
 import com.example.model.*
-import com.example.service.NotionService
+import com.example.service.NotionWriterService
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 
 class Handler(
-    private val notionService: NotionService? = createNotionService()
+    private val notionService: NotionWriterService? = createNotionService()
 ) : RequestHandler<Map<String, Any>, Map<String, Any>> {
     private val json = Json {
         ignoreUnknownKeys = true
@@ -16,11 +17,11 @@ class Handler(
     }
 
     companion object {
-        private fun createNotionService(): NotionService? {
+        private fun createNotionService(): NotionWriterService? {
             val apiKey = System.getenv("NOTION_API_KEY")
             val pageId = System.getenv("NOTION_PAGE_ID")
             return if (apiKey != null && pageId != null) {
-                NotionService(apiKey, pageId)
+                NotionWriterService(apiKey, pageId)
             } else {
                 null
             }
@@ -61,15 +62,15 @@ class Handler(
                     logger.log("受信メッセージ: ${event.text}")
 
                     // Notionにメッセージを追記
-                    try {
-                        logger.log("notionService: $notionService")
-                        notionService?.appendMessage(event.text, event.user, event.ts) { message ->
-                            logger.log(message)
+                    when(val result = notionService?.exec(event.text)) {
+                        is Either.Right<*> -> {
+                            logger.log("Notionにメッセージを追記しました")
                         }
-                        logger.log("Notionにメッセージを追記しました")
-                    } catch (e: Exception) {
-                        logger.log("Notion追記エラー: ${e.message}")
-                        e.printStackTrace()
+                       else -> {
+                            val error = result?.leftOrNull()
+                            logger.log("Notion追記エラー: ${error?.message}")
+                            error?.printStackTrace()
+                        }
                     }
 
                     val response = Response(event.text)

@@ -1,18 +1,18 @@
 package com.example
 
+import arrow.core.Either
 import com.amazonaws.services.lambda.runtime.Context
 import com.amazonaws.services.lambda.runtime.LambdaLogger
 import com.example.model.*
-import com.example.service.NotionService
+import com.example.service.NotionWriterService
 import io.mockk.*
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
-import org.mockito.kotlin.mock
-import org.mockito.kotlin.whenever
 
 class HandlerTest {
     private val json = Json {
@@ -20,11 +20,12 @@ class HandlerTest {
         classDiscriminator = "#type"
     }
     private val handler = Handler()
-    private val mockContext: Context = mock()
-    private val mockLogger: LambdaLogger = mock()
+    private val mockContext: Context = mockk()
+    private val mockLogger: LambdaLogger = mockk(relaxed = true)
 
-    init {
-        whenever(mockContext.logger).thenReturn(mockLogger)
+    @BeforeEach
+    fun setup() {
+        every { mockContext.logger } returns mockLogger
     }
 
     @Test
@@ -125,14 +126,14 @@ class HandlerTest {
 
     @Test
     fun `should call NotionService when handling event_callback`() {
-        val mockNotionService = mockk<NotionService>()
+        val mockNotionService = mockk<NotionWriterService>()
+        val mockResponse = mockk<okhttp3.Response>()
 
-        // Setup mock behavior
-        every { mockNotionService.appendMessage(any(), any(), any(), any()) } just Runs
+        val messageText = "Hello from Slack!"
+        every { mockNotionService.exec(messageText) } returns Either.Right(mockResponse)
 
         val handlerWithNotion = Handler(mockNotionService)
 
-        val messageText = "Hello from Slack!"
         val event = MessageEvent(
             type = "message",
             channel = "C123456",
@@ -152,14 +153,8 @@ class HandlerTest {
         val response = handlerWithNotion.handleRequest(input, mockContext)
         assertEquals(200, response["statusCode"])
 
-        // Verify NotionService.appendMessage was called with correct parameters
         verify {
-            mockNotionService.appendMessage(
-                messageText,
-                "U123456",
-                "1234567890.123456",
-                any()
-            )
+            mockNotionService.exec(messageText)
         }
     }
 }
