@@ -62,16 +62,10 @@ class Handler(
                     logger.log("受信メッセージ: ${event.text}")
 
                     // Notionにメッセージを追記
-                    when(val result = notionService?.exec(event.text)) {
-                        is Either.Right<*> -> {
-                            logger.log("Notionにメッセージを追記しました")
-                        }
-                       else -> {
-                            val error = result?.leftOrNull()
-                            logger.log("Notion追記エラー: ${error?.message}")
-                            error?.printStackTrace()
-                        }
-                    }
+                    notionService?.exec(event.text)?.fold(
+                        { error ->  logger.log("Notion追記エラー: ${error.message}") },
+                        { _ -> logger.log("Notionにメッセージを追記しました") }
+                    )
 
                     val response = Response(event.text)
                     successResponse(json.encodeToString(response))
