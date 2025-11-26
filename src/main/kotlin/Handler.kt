@@ -50,11 +50,10 @@ class Handler(
             val slackEvent = json.decodeFromString<SlackEvent>(body)
 
             // イベントタイプごとの処理（sealed classでスマートキャスト）
-            when (slackEvent) {
+            val responseBody = when (slackEvent) {
                 is UrlVerificationEvent -> {
                     logger.log("Parsed Slack event: type=${slackEvent.type}, challenge=${slackEvent.challenge}")
-                    val response = ChallengeResponse(slackEvent.challenge)
-                    successResponse(json.encodeToString(response))
+                    json.encodeToString(ChallengeResponse(slackEvent.challenge))
                 }
                 is EventCallbackEvent -> {
                     logger.log("Parsed Slack event: type=${slackEvent.type}, event_id=${slackEvent.eventId}")
@@ -67,10 +66,10 @@ class Handler(
                         { _ -> logger.log("Notionにメッセージを追記しました") }
                     )
 
-                    val response = Response(event.text)
-                    successResponse(json.encodeToString(response))
+                    json.encodeToString(Response(event.text))
                 }
             }
+            successResponse(responseBody)
         } catch (e: Exception) {
             logger.log("Error processing request: ${e.message}")
             errorResponse("Invalid request: ${e.message}", 400)
