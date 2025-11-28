@@ -62,7 +62,10 @@ class Handler(
 
                     // Notionにメッセージを追記
                     notionService?.exec(event.text)?.fold(
-                        { error ->  logger.log("Notion追記エラー: ${error.message}") },
+                        { error ->
+                            logger.log("Notion追記エラー: ${error.message}")
+                            return errorResponse("Failed to save to Notion: ${error.message}", 500)
+                        },
                         { _ -> logger.log("Notionにメッセージを追記しました") }
                     )
 
